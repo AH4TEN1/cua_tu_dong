@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SMART DOOR CONTROL</title>
+
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma;
+        background: linear-gradient(135deg, #f0f4f8, #c8d9e8);
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      }
+      .container {
+        margin: 40px auto;
+        background: white;
+        padding: 30px;
+        width: 90%;
+        max-width: 450px;
+        border-radius: 15px;
+        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.2);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 26px;
+      }
+      .mode-btn {
+        padding: 12px 25px;
+        margin: 10px;
+        font-size: 18px;
+        border: none;
+        border-radius: 6px;
+        background: #e9ecef;
+        cursor: pointer;
+        transition: 0.3s;
+        font-weight: 600;
+      }
+      .mode-btn.active {
+        background: #007bff;
+        color: white;
+        box-shadow: 0px 4px 10px rgba(0, 123, 255, 0.4);
+      }
+      .control-btn {
+        padding: 12px 25px;
+        margin: 10px;
+        font-size: 18px;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .open {
+        background: #28a745;
+      }
+      .close {
+        background: #dc3545;
+      }
+
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        background: #eef3fa;
+        border-radius: 8px;
+        font-weight: 600;
+        color: #004a99;
+      }
+
+      .slider-box {
+        margin-top: 25px;
+        text-align: left;
+      }
+      input[type='range'] {
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>SMART DOOR CONTROL</h2>
+
+      <p><b>SELECT MODE</b></p>
+      <button id="auto-btn" class="mode-btn" onclick="setMode('AUTO')">
+        AUTO
+      </button>
+      <button id="manu-btn" class="mode-btn" onclick="setMode('MANUAL')">
+        MANUAL
+      </button>
+
+      <div id="manual-controls" style="display: none">
+        <p><b>MANUAL CONTROL</b></p>
+        <button class="control-btn open" onclick="sendCmd('OPEN')">OPEN</button>
+        <button class="control-btn close" onclick="sendCmd('CLOSE')">
+          CLOSE
+        </button>
+      </div>
+
+      <div class="slider-box">
+        <p><b>DOOR HOLD TIME:</b> <span id="hold-val">2000</span> ms</p>
+        <input
+          type="range"
+          min="500"
+          max="5000"
+          step="100"
+          value="2000"
+          id="hold-slider"
+          oninput="updateHoldTime(this.value)"
+          onchange="saveHoldTime(this.value)"
+        />
+      </div>
+
+      <div id="status">Loading...</div>
+    </div>
+
+    <script>
+      // =========================================
+      // Gửi lệnh đến API Vercel
+      // =========================================
+      function apiSend(data) {
+        return fetch('/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        }).then((res) => res.json());
+      }
+
+      // =========================================
+      // MODE
+      // =========================================
+      function setMode(m) {
+        apiSend({ cmd: m }).then(() => {
+          updateUI(m);
+        });
+      }
+
+      function updateUI(m) {
+        let a = document.getElementById('auto-btn');
+        let b = document.getElementById('manu-btn');
+        let ctrl = document.getElementById('manual-controls');
+        let st = document.getElementById('status');
+
+        a.classList.remove('active');
+        b.classList.remove('active');
+
+        if (m === 'AUTO') {
+          a.classList.add('active');
+          ctrl.style.display = 'none';
+          st.innerText = 'Mode: AUTO';
+        } else {
+          b.classList.add('active');
+          ctrl.style.display = 'block';
+          st.innerText = 'Mode: MANUAL';
+        }
+      }
+
+      // =========================================
+      // MANUAL CONTROL
+      // =========================================
+      function sendCmd(cmd) {
+        apiSend({ cmd: cmd });
+      }
+
+      // =========================================
+      // SLIDER: set hold time
+      // =========================================
+      function updateHoldTime(val) {
+        document.getElementById('hold-val').innerText = val;
+      }
+
+      function saveHoldTime(val) {
+        apiSend({ hold: val });
+      }
+
+      // =========================================
+      // Khi load trang → hỏi mode + hỏi hold time
+      // =========================================
+      apiSend({ query: 'mode' }).then((r) => {
+        updateUI(r.mode === 'A' ? 'AUTO' : 'MANUAL');
+      });
+
+      apiSend({ query: 'hold' }).then((r) => {
+        document.getElementById('hold-slider').value = r.hold;
+        document.getElementById('hold-val').innerText = r.hold;
+      });
+    </script>
+  </body>
+</html>
