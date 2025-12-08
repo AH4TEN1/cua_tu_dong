@@ -3,187 +3,157 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SMART DOOR CONTROL</title>
-
     <style>
       body {
         font-family: 'Segoe UI', Tahoma;
-        background: linear-gradient(135deg, #f0f4f8, #c8d9e8);
+        text-align: center;
+        background: #eef2f6;
         margin: 0;
         padding: 0;
-        text-align: center;
       }
       .container {
-        margin: 40px auto;
-        background: white;
-        padding: 30px;
+        background: #fff;
         width: 90%;
         max-width: 450px;
-        border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.2);
+        margin: auto;
+        margin-top: 40px;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
       }
-      h2 {
-        margin-top: 0;
-        font-size: 26px;
-      }
-      .mode-btn {
+      button {
         padding: 12px 25px;
-        margin: 10px;
-        font-size: 18px;
+        margin: 6px;
         border: none;
         border-radius: 6px;
-        background: #e9ecef;
+        font-size: 16px;
         cursor: pointer;
-        transition: 0.3s;
         font-weight: 600;
       }
-      .mode-btn.active {
-        background: #007bff;
-        color: white;
-        box-shadow: 0px 4px 10px rgba(0, 123, 255, 0.4);
-      }
-      .control-btn {
-        padding: 12px 25px;
-        margin: 10px;
-        font-size: 18px;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
+      .active {
+        background: #007bff !important;
+        color: white !important;
       }
       .open {
         background: #28a745;
+        color: white;
       }
       .close {
         background: #dc3545;
+        color: white;
       }
-
       #status {
         margin-top: 20px;
         padding: 10px;
-        background: #eef3fa;
-        border-radius: 8px;
-        font-weight: 600;
-        color: #004a99;
-      }
-
-      .slider-box {
-        margin-top: 25px;
-        text-align: left;
-      }
-      input[type='range'] {
-        width: 100%;
+        background: #f8f9fa;
+        border-radius: 5px;
+        color: #007bff;
+        font-weight: 500;
       }
     </style>
   </head>
-
   <body>
     <div class="container">
       <h2>SMART DOOR CONTROL</h2>
 
-      <p><b>SELECT MODE</b></p>
-      <button id="auto-btn" class="mode-btn" onclick="setMode('AUTO')">
-        AUTO
-      </button>
-      <button id="manu-btn" class="mode-btn" onclick="setMode('MANUAL')">
-        MANUAL
-      </button>
+      <p>SELECT MODE:</p>
+      <button id="auto-btn" onclick="setMode('A')">AUTO</button>
+      <button id="manu-btn" onclick="setMode('M')">MANUAL</button>
 
-      <div id="manual-controls" style="display: none">
-        <p><b>MANUAL CONTROL</b></p>
-        <button class="control-btn open" onclick="sendCmd('OPEN')">OPEN</button>
-        <button class="control-btn close" onclick="sendCmd('CLOSE')">
-          CLOSE
-        </button>
+      <div id="manu-controls" style="display: none; margin-top: 15px">
+        <p>MANUAL CONTROL:</p>
+        <button class="open" onclick="sendControl('O')">OPEN DOOR</button>
+        <button class="close" onclick="sendControl('C')">CLOSE DOOR</button>
       </div>
 
-      <div class="slider-box">
-        <p><b>DOOR HOLD TIME:</b> <span id="hold-val">2000</span> ms</p>
+      <div style="margin-top: 20px">
+        <p>HOLD TIME (ms):</p>
         <input
           type="range"
+          id="holdSlider"
           min="500"
           max="5000"
           step="100"
           value="2000"
-          id="hold-slider"
-          oninput="updateHoldTime(this.value)"
-          onchange="saveHoldTime(this.value)"
         />
+        <p id="sliderValue">2000 ms</p>
       </div>
 
-      <div id="status">Loading...</div>
+      <div id="status">Status: Loading...</div>
     </div>
 
     <script>
-      // =========================================
-      // Gửi lệnh đến API Vercel
-      // =========================================
-      function apiSend(data) {
-        return fetch('/api/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        }).then((res) => res.json());
+      let currentMode = 'A';
+
+      // ---------------------------
+      // Send command to ESP8266 API
+      // ---------------------------
+      function send(cmd) {
+        fetch('/api/message?cmd=' + cmd)
+          .then((r) => r.text())
+          .then((t) => console.log('ESP->', t));
       }
 
-      // =========================================
-      // MODE
-      // =========================================
-      function setMode(m) {
-        apiSend({ cmd: m }).then(() => {
-          updateUI(m);
-        });
+      // ---------------------------
+      // Change mode (A / M)
+      // ---------------------------
+      function setMode(cmd) {
+        send(cmd);
+        currentMode = cmd;
+        updateUI();
       }
 
-      function updateUI(m) {
-        let a = document.getElementById('auto-btn');
-        let b = document.getElementById('manu-btn');
-        let ctrl = document.getElementById('manual-controls');
-        let st = document.getElementById('status');
-
-        a.classList.remove('active');
-        b.classList.remove('active');
-
-        if (m === 'AUTO') {
-          a.classList.add('active');
-          ctrl.style.display = 'none';
-          st.innerText = 'Mode: AUTO';
-        } else {
-          b.classList.add('active');
-          ctrl.style.display = 'block';
-          st.innerText = 'Mode: MANUAL';
+      // ---------------------------
+      // Manual control (O / C)
+      // ---------------------------
+      function sendControl(cmd) {
+        if (currentMode === 'M') {
+          send(cmd);
+          document.getElementById('status').innerText =
+            'Status: Sending ' + cmd;
         }
       }
 
-      // =========================================
-      // MANUAL CONTROL
-      // =========================================
-      function sendCmd(cmd) {
-        apiSend({ cmd: cmd });
+      // ---------------------------
+      // Update UI state
+      // ---------------------------
+      function updateUI() {
+        document.getElementById('auto-btn').classList.remove('active');
+        document.getElementById('manu-btn').classList.remove('active');
+
+        if (currentMode === 'A') {
+          document.getElementById('auto-btn').classList.add('active');
+          document.getElementById('manu-controls').style.display = 'none';
+          document.getElementById('status').innerText = 'Status: AUTO Mode';
+        } else {
+          document.getElementById('manu-btn').classList.add('active');
+          document.getElementById('manu-controls').style.display = 'block';
+          document.getElementById('status').innerText = 'Status: MANUAL Mode';
+        }
       }
 
-      // =========================================
-      // SLIDER: set hold time
-      // =========================================
-      function updateHoldTime(val) {
-        document.getElementById('hold-val').innerText = val;
-      }
+      // ---------------------------
+      // Slider event: send Txxxx
+      // ---------------------------
+      const slider = document.getElementById('holdSlider');
+      const sliderValue = document.getElementById('sliderValue');
 
-      function saveHoldTime(val) {
-        apiSend({ hold: val });
-      }
+      slider.oninput = function () {
+        sliderValue.innerText = this.value + ' ms';
+        send('T' + this.value);
+      };
 
-      // =========================================
-      // Khi load trang → hỏi mode + hỏi hold time
-      // =========================================
-      apiSend({ query: 'mode' }).then((r) => {
-        updateUI(r.mode === 'A' ? 'AUTO' : 'MANUAL');
-      });
-
-      apiSend({ query: 'hold' }).then((r) => {
-        document.getElementById('hold-slider').value = r.hold;
-        document.getElementById('hold-val').innerText = r.hold;
-      });
+      // ---------------------------
+      // Load mode from ESP when page opens
+      // ---------------------------
+      window.onload = function () {
+        fetch('/api/message?cmd=Q')
+          .then((r) => r.text())
+          .then((mode) => {
+            if (mode === 'A' || mode === 'M') currentMode = mode;
+            updateUI();
+          });
+      };
     </script>
   </body>
 </html>

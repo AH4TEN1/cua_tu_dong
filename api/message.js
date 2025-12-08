@@ -1,39 +1,32 @@
-export default async function handler(req, res) {
-  const body = req.body;
+// api/message.js
+let lastCommand = ''; // Lưu lệnh mới nhất từ Web UI
+let lastUpdated = 0; // Thời gian cập nhật gần nhất (ms)
 
-  // Truy vấn mode
-  if (body.query === 'mode') {
-    // Lấy từ DB hoặc cache
-    return res.status(200).json({
-      mode: global.currentMode ?? 'A'
+// Hàm trả JSON nhanh
+function send(res, msg) {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(200).send(JSON.stringify(msg));
+}
+
+export default function handler(req, res) {
+  const { cmd, get } = req.query;
+
+  // === Web UI gửi lệnh ===
+  if (cmd) {
+    lastCommand = cmd;
+    lastUpdated = Date.now();
+    return send(res, { ok: true, received: cmd });
+  }
+
+  // === ESP8266 lấy lệnh ===
+  if (get == '1') {
+    let temp = lastCommand;
+    lastCommand = ''; // ESP đọc xong thì xóa để tránh lặp
+    return send(res, {
+      cmd: temp,
+      updated: lastUpdated
     });
   }
 
-  // Truy vấn thời gian giữ cửa
-  if (body.query === 'hold') {
-    return res.status(200).json({
-      hold: global.holdTime ?? 2000
-    });
-  }
-
-  // Lưu thời gian giữ mở
-  if (body.hold) {
-    global.holdTime = Number(body.hold);
-    return res.status(200).json({ ok: true });
-  }
-
-  // Gửi lệnh (Lưu vào biến global để ESP đến lấy)
-  if (body.cmd) {
-    global.lastCmd = body.cmd.charAt(0);
-    global.currentMode =
-      body.cmd === 'AUTO'
-        ? 'A'
-        : body.cmd === 'MANUAL'
-        ? 'M'
-        : global.currentMode;
-
-    return res.status(200).json({ ok: true });
-  }
-
-  res.status(400).json({ error: 'Invalid request' });
+  return send(res, { error: 'No action' });
 }
