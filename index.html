@@ -3,130 +3,27 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SMART DOOR CONTROL</title>
-    <style>
-      body { font-family: 'Segoe UI', text-align: center; background: #e5edf5; padding-top: 40px; }
-      .mode-btn { padding: 12px 25px; margin: 8px; border: none; border-radius: 6px; font-size: 18px; }
-      .active { background: #007bff; color: white; }
-      .open { background: #28a745; color:white; }
-      .close { background:#dc3545; color:white; }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <h2>SMART DOOR CONTROL</h2>
 
     <div>
-      <button id="auto-btn" class="mode-btn" onclick="setMode('A')">
+      <button id="auto-btn" class="mode-btn" onclick="setMode('AUTO')">
         AUTO
       </button>
-      <button id="manu-btn" class="mode-btn" onclick="setMode('M')">
+      <button id="manu-btn" class="mode-btn" onclick="setMode('MANUAL')">
         MANUAL
       </button>
     </div>
 
     <div id="manual-controls" style="display: none; margin-top: 20px">
-      <button class="open" onclick="sendCmd('O')">OPEN</button>
-      <button class="close" onclick="sendCmd('C')">CLOSE</button>
+      <button class="open" onclick="sendCmd('OPEN')">OPEN</button>
+      <button class="close" onclick="sendCmd('CLOSE')">CLOSE</button>
     </div>
 
-    <div style="margin-top: 20px">
-      <p>HOLD TIME (ms):</p>
-      <input
-        type="range"
-        id="holdSlider"
-        min="500"
-        max="5000"
-        step="100"
-        value="2000"
-      />
-      <p id="sliderValue">2000 ms</p>
-    </div>
+    <p id="status">Loading mode...</p>
 
-    <p id="status">Loading...</p>
-
-    <script>
-      // === CẤU HÌNH ===
-      // Thay bằng URL deploy Vercel của anh (không để /api/message ở cuối)
-      const API_BASE = '/api/message'; // nếu deploy cùng domain; hoặc "https://my-app.vercel.app/api/message"
-
-      let currentMode = 'A';
-
-      function apiGet(query) {
-        const url = API_BASE + (query ? '?' + query : '');
-        return fetch(url, { cache: 'no-store' }).then((r) => r.text());
-      }
-
-      function apiPost(body) {
-        return fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          cache: 'no-store'
-        }).then((r) => r.json());
-      }
-
-      function sendCmd(cmd) {
-        // Gửi lệnh O/C/A/M/T... tới Vercel
-        apiGet('cmd=' + encodeURIComponent(cmd))
-          .then((txt) => console.log('API response:', txt))
-          .catch((e) => console.error(e));
-        document.getElementById('status').innerText = 'Status: Sent ' + cmd;
-      }
-
-      function setMode(modeChar) {
-        currentMode = modeChar === 'A' ? 'A' : 'M';
-        sendCmd(modeChar);
-        updateUI();
-      }
-
-      function updateUI() {
-        document.getElementById('auto-btn').classList.remove('active');
-        document.getElementById('manu-btn').classList.remove('active');
-
-        if (currentMode === 'A') {
-          document.getElementById('auto-btn').classList.add('active');
-          document.getElementById('manual-controls').style.display = 'none';
-          document.getElementById('status').innerText = 'Mode: AUTO';
-        } else {
-          document.getElementById('manu-btn').classList.add('active');
-          document.getElementById('manual-controls').style.display = 'block';
-          document.getElementById('status').innerText = 'Mode: MANUAL';
-        }
-      }
-
-      // Slider xử lý Txxxx
-      const slider = document.getElementById('holdSlider');
-      const sliderValue = document.getElementById('sliderValue');
-      slider.oninput = function () {
-        sliderValue.innerText = this.value + ' ms';
-      };
-      slider.onchange = function () {
-        const tcmd = 'T' + this.value; // format: T3000
-        sendCmd(tcmd);
-      };
-
-      // Khi load trang, lấy trạng thái gần nhất (mode/hold/status) từ API
-      window.addEventListener('load', () => {
-        // Lấy last known mode/status
-        apiGet('getmode=1')
-          .then((txt) => {
-            try {
-              const obj = JSON.parse(txt);
-              if (obj.mode === 'A' || obj.mode === 'M') currentMode = obj.mode;
-              if (obj.hold) slider.value = obj.hold;
-              if (obj.hold) sliderValue.innerText = obj.hold + ' ms';
-              if (obj.status)
-                document.getElementById('status').innerText =
-                  'Status: ' + obj.status;
-            } catch (e) {
-              console.warn('getmode parse failed', e, txt);
-            }
-            updateUI();
-          })
-          .catch((err) => {
-            console.warn('getmode failed', err);
-            updateUI();
-          });
-      });
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>
