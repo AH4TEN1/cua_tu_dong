@@ -1,52 +1,54 @@
 // api/message.js
-let lastCommand = ''; // lệnh chờ (chuỗi)
-let lastUpdated = 0; // timestamp
-let lastMode = 'A'; // 'A' hoặc 'M'
-let lastHold = 2000; // ms
-let lastStatus = ''; // chuỗi trạng thái do ESP/UNO gửi
+
+let lastCommand = '';
+let lastUpdated = 0;
+let lastMode = 'A';
+let lastHold = 2000;
+let lastStatus = '';
 
 const sendJSON = (res, obj) => {
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader(
-    'Cache-Control',
-    'no-store, no-cache, must-revalidate, max-age=0'
-  );
-  res.status(200).send(JSON.stringify(obj));
+  res.setHeader('Cache-Control', 'no-store, no-cache');
+  res.status(200).json(obj);
 };
 
 export default function handler(req, res) {
-  const url = new URL(req.url, 'http://localhost');
-  const cmd = url.searchParams.get('cmd');
-  const get = url.searchParams.get('get');
-  const getmode = url.searchParams.get('getmode');
+  // ❌ Không dùng new URL → gây redirect
+  // ✔ Dùng req.query chuẩn Vercel
+  const { cmd, get, getmode } = req.query || {};
 
+  // ==============================
   // 1) Web gửi lệnh: ?cmd=...
+  // ==============================
   if (cmd) {
-    // Nếu cmd là Txxxx -> cập nhật lastHold luôn
     if (cmd[0] === 'T') {
       const num = parseInt(cmd.slice(1));
-      if (!isNaN(num) && num >= 500) {
-        lastHold = num;
-      }
-      lastCommand = cmd; // vẫn lưu để ESP lấy
+      if (!isNaN(num) && num >= 500) lastHold = num;
     } else {
-      // đặt lastMode khi nhận A/M
       if (cmd === 'A') lastMode = 'A';
       if (cmd === 'M') lastMode = 'M';
-      lastCommand = cmd;
     }
+    lastCommand = cmd;
     lastUpdated = Date.now();
+
     return sendJSON(res, { ok: true, received: cmd });
   }
 
-  // 2) ESP poll lấy lệnh: ?get=1
+  // ==========================================
+  // 2) ESP8266 poll: ?get=1  (TRẢ PLAIN TEXT)
+  // ==========================================
   if (get === '1') {
-    const temp = lastCommand;
-    lastCommand = ''; // clear để tránh lặp
-    return res.setHeader('Cache-Control', 'no-store').status(200).send(temp); // trả plain text (dễ cho ESP parse)
+    const tmp = lastCommand;
+    lastCommand = '';
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send(tmp);
   }
 
-  // 3) Web/Client hỏi mode/status hiện tại: ?getmode=1
+  // ==========================================
+  // 3) WEB hỏi trạng thái / mode
+  // ==========================================
   if (getmode === '1') {
     return sendJSON(res, {
       mode: lastMode,
@@ -56,25 +58,29 @@ export default function handler(req, res) {
     });
   }
 
-  // 4) ESP gửi status về (POST JSON): { type: "status", status: "OP_OK", mode:"A", hold:2000 }
+  // ==========================================
+  // 4) ESP POST status lên server
+  // ==========================================
   if (req.method === 'POST') {
+    let data = {};
     try {
-      const body = JSON.parse(req.body || '{}');
-      if (body.type === 'status') {
-        if (body.status) lastStatus = body.status;
-        if (body.mode && (body.mode === 'A' || body.mode === 'M'))
-          lastMode = body.mode;
-        if (body.hold && Number(body.hold) >= 500) lastHold = Number(body.hold);
-        lastUpdated = Date.now();
-        return sendJSON(res, { ok: true });
-      } else {
-        return sendJSON(res, { error: 'unknown post type' });
-      }
+      data = JSON.parse(req.body || '{}');
     } catch (e) {
       return sendJSON(res, { error: 'invalid json' });
     }
+
+    if (data.type === 'status') {
+      if (data.status) lastStatus = data.status;
+      if (data.mode === 'A' || data.mode === 'M') lastMode = data.mode;
+      if (data.hold && Number(data.hold) >= 500) lastHold = Number(data.hold);
+
+      lastUpdated = Date.now();
+      return sendJSON(res, { ok: true });
+    }
+
+    return sendJSON(res, { error: 'unknown type' });
   }
 
-  // default
+  // Default
   return sendJSON(res, { status: 'idle' });
 }
