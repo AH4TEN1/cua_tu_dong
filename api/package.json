@@ -1,5 +1,8 @@
 {
-  "name": "smart-door-api",
-  "version": "1.0.0",
-  "private": true
+  "rewrites": [
+    {
+      "source": "/api/message",
+      "destination": "/api/message.js"
+    }
+  ]
 }

@@ -2,42 +2,57 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <title>Smart Door – Điều khiển từ xa</title>
+    <title>HỆ THỐNG CỬA THÔNG MINH</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+      :root {
+        --bg: linear-gradient(135deg, #667eea, #764ba2);
+        --card: rgba(255, 255, 255, 0.15);
+        --text: #fff;
+        --active: #4facfe;
+      }
       body {
-        font-family: system-ui;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
+        font-family: 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
         margin: 0;
         min-height: 100vh;
         display: grid;
         place-items: center;
       }
       .card {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(15px);
-        border-radius: 20px;
-        padding: 30px 40px;
+        background: var(--card);
+        backdrop-filter: blur(16px);
+        border-radius: 24px;
+        padding: 32px;
         width: 90%;
         max-width: 420px;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      }
+      h1 {
+        margin: 0 0 30px;
+        font-size: 28px;
       }
       button {
         width: 100%;
         padding: 18px;
-        margin: 10px 0;
+        margin: 12px 0;
         border: none;
-        border-radius: 12px;
-        font-size: 18px;
+        border-radius: 16px;
+        font-size: 19px;
         font-weight: bold;
         cursor: pointer;
         transition: 0.3s;
       }
+      .mode {
+        background: #fff;
+        color: #333;
+      }
       .active {
-        transform: scale(1.05);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        background: var(--active);
+        transform: scale(1.04);
+        box-shadow: 0 10px 30px rgba(79, 172, 254, 0.5);
       }
       .open {
         background: #28a745;
@@ -45,21 +60,62 @@
       .close {
         background: #dc3545;
       }
+      .slider-con {
+        margin: 30px 0;
+      }
+      .slider {
+        width: 100%;
+        height: 12px;
+        border-radius: 12px;
+        background: #fff3;
+        -webkit-appearance: none;
+        outline: none;
+      }
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #4facfe;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+      #timeVal {
+        font-size: 32px;
+        font-weight: bold;
+        margin: 10px 0;
+      }
       #status {
         margin-top: 20px;
-        font-size: 19px;
+        font-size: 18px;
+        min-height: 24px;
       }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>HỆ THỐNG CỬA TỰ ĐỘNG IOT</h1>
-      <button id="auto" onclick="send('A')">Chế độ TỰ ĐỘNG</button>
-      <button id="manual" onclick="send('M')">Chế độ THỦ CÔNG</button>
+      <h1>Smart Door Pro</h1>
 
-      <div id="manual-controls" style="margin-top: 20px; display: none">
+      <button id="auto" class="mode active" onclick="send('A')">TỰ ĐỘNG</button>
+      <button id="manual" class="mode" onclick="send('M')">THỦ CÔNG</button>
+
+      <div id="manual-controls" style="margin-top: 25px; display: none">
         <button class="open" onclick="send('O')">MỞ CỬA</button>
         <button class="close" onclick="send('C')">ĐÓNG CỬA</button>
+      </div>
+
+      <div class="slider-con">
+        <p>Thời gian giữ cửa mở</p>
+        <div id="timeVal">5</div>
+        <input
+          type="range"
+          id="timer"
+          class="slider"
+          min="1"
+          max="30"
+          value="5"
+          oninput="slide(this.value)"
+        />
       </div>
 
       <div id="status">Đang kết nối...</div>
@@ -67,56 +123,64 @@
 
     <script>
       const API = '/api/message';
-
-      let mode = 'A';
+      let currentMode = 'A';
 
       async function send(cmd) {
-        try {
-          const res = await fetch(API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cmd })
-          });
-          if (!res.ok) throw new Error('API error');
+        const time = document.getElementById('timer').value;
+        await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cmd, time })
+        });
 
-          if (cmd === 'A' || cmd === 'M') {
-            mode = cmd;
-            document.getElementById('manual-controls').style.display =
-              cmd === 'M' ? 'block' : 'none';
-            document
-              .getElementById('auto')
-              .classList.toggle('active', cmd === 'A');
-            document
-              .getElementById('manual')
-              .classList.toggle('active', cmd === 'M');
-          }
-
-          document.getElementById('status').textContent =
-            cmd === 'A'
-              ? 'Đã chuyển: TỰ ĐỘNG'
-              : cmd === 'M'
-              ? 'Đã chuyển: THỦ CÔNG'
-              : cmd === 'O'
-              ? 'ĐÃ MỞ CỬA'
-              : 'ĐÃ ĐÓNG CỬA';
-
-          setTimeout(() => {
-            document.getElementById('status').textContent =
-              mode === 'A' ? 'Mode: TỰ ĐỘNG' : 'Mode: THỦ CÔNG';
-          }, 2000);
-        } catch (e) {
-          document.getElementById('status').textContent =
-            'Lỗi kết nối: ' + e.message;
+        if (cmd === 'A' || cmd === 'M') {
+          currentMode = cmd;
+          document.getElementById('manual-controls').style.display =
+            cmd === 'M' ? 'block' : 'none';
+          document
+            .getElementById('auto')
+            .classList.toggle('active', cmd === 'A');
+          document
+            .getElementById('manual')
+            .classList.toggle('active', cmd === 'M');
         }
+
+        document.getElementById('status').textContent =
+          cmd === 'O'
+            ? 'ĐÃ MỞ CỬA'
+            : cmd === 'C'
+            ? 'ĐÃ ĐÓNG CỬA'
+            : 'Chuyển: ' + (cmd === 'A' ? 'TỰ ĐỘNG' : 'THỦ CÔNG');
+
+        setTimeout(
+          () =>
+            (document.getElementById('status').textContent =
+              currentMode === 'A' ? 'TỰ ĐỘNG' : 'THỦ CÔNG'),
+          2500
+        );
       }
 
-      // Load mode hiện tại khi mở trang
+      function slide(val) {
+        document.getElementById('timeVal').textContent = val;
+        // Gửi thời gian mới ngay lập tức
+        fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ time: parseInt(val) })
+        });
+      }
+
+      // Load trạng thái ban đầu
       fetch(API)
         .then((r) => r.json())
-        .then((data) => send(data.cmd === 'M' ? 'M' : 'A'))
+        .then((d) => {
+          document.getElementById('timer').value = d.time;
+          document.getElementById('timeVal').textContent = d.time;
+          slide(d.time);
+          send(d.cmd === 'M' ? 'M' : 'A');
+        })
         .catch(
-          () =>
-            (document.getElementById('status').textContent = 'ESP đang offline')
+          () => (document.getElementById('status').textContent = 'ESP offline')
         );
     </script>
   </body>
