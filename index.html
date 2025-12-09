@@ -1,64 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>SMART DOOR - UI</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/1.1.0/modern-normalize.min.css"
-    />
+    <meta charset="UTF-8" />
+    <title>Door Controller</title>
     <style>
       body {
-        font-family: Segoe UI, Arial;
-        background: #eaf0f8;
+        font-family: Arial, sans-serif;
+        background: #f3f3f3;
         text-align: center;
-        padding: 32px;
+        padding: 30px;
       }
       .btn {
-        padding: 12px 20px;
-        margin: 6px;
-        border-radius: 8px;
-        border: 0;
+        padding: 15px 25px;
+        margin: 10px;
+        font-size: 20px;
+        border: none;
+        border-radius: 10px;
         cursor: pointer;
-        font-size: 16px;
       }
       .open {
-        background: #28a745;
-        color: #fff;
+        background: #2ecc71;
+        color: white;
       }
       .close {
-        background: #dc3545;
-        color: #fff;
+        background: #e74c3c;
+        color: white;
       }
-      .auto {
-        background: #007bff;
-        color: #fff;
-      }
-      .man {
-        background: #6c757d;
-        color: #fff;
+      .mode {
+        background: #3498db;
+        color: white;
       }
       #status {
         margin-top: 20px;
+        font-size: 18px;
       }
     </style>
   </head>
+
   <body>
-    <h1>SMART DOOR (Web UI)</h1>
+    <h1>Door Control Panel</h1>
 
-    <div>
-      <button class="btn auto" onclick="setMode('A')">AUTO</button>
-      <button class="btn man" onclick="setMode('M')">MANUAL</button>
-    </div>
+    <button class="btn mode" onclick="sendCmd('A')">AUTO Mode</button>
+    <button class="btn mode" onclick="sendCmd('M')">MANUAL Mode</button>
+    <br />
+    <button class="btn open" onclick="sendCmd('O')">OPEN</button>
+    <button class="btn close" onclick="sendCmd('C')">CLOSE</button>
 
-    <div style="margin-top: 16px">
-      <button class="btn open" onclick="sendCmd('OPEN')">OPEN</button>
-      <button class="btn close" onclick="sendCmd('CLOSE')">CLOSE</button>
-    </div>
+    <div id="status">Đang chờ...</div>
 
-    <p id="status">Status: —</p>
+    <script>
+      async function sendCmd(cmd) {
+        document.getElementById('status').innerHTML =
+          'Đang gửi lệnh: ' + cmd + '...';
 
-    <script src="/script.js"></script>
+        try {
+          const res = await fetch('/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmd })
+          });
+
+          const data = await res.json();
+          document.getElementById('status').innerHTML =
+            '<b>ESP8266 phản hồi:</b> ' + JSON.stringify(data);
+        } catch (err) {
+          document.getElementById('status').innerHTML = 'Lỗi kết nối API!';
+        }
+      }
+    </script>
   </body>
 </html>
