@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   }
 
   // HÀM KẾT NỐI ESP8266
-  const ESP_URL = 'http://YOUR_ESP8266_LOCAL_IP/message';
+  const ESP_URL = 'https://cua-tu-dong.vercel.app/message';
   // VD: 192.168.1.55/message
 
   try {
