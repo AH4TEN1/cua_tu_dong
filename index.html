@@ -66,9 +66,9 @@
     </div>
 
     <script>
-      const API = '/api/message';
-      let mode = 'A';
+      const API = '/api/message'; // ← Dòng duy nhất cần thay đổi
 
+      let mode = 'A';
       async function send(cmd) {
         await fetch(API, {
           method: 'POST',
@@ -87,14 +87,13 @@
             .classList.toggle('active', cmd === 'M');
         }
         document.getElementById('status').textContent =
-          'Đã gửi lệnh: ' +
-          (cmd === 'A'
-            ? 'TỰ ĐỘNG'
+          cmd === 'A'
+            ? 'Đã chuyển: TỰ ĐỘNG'
             : cmd === 'M'
-            ? 'THỦ CÔNG'
+            ? 'Đã chuyển: THỦ CÔNG'
             : cmd === 'O'
-            ? 'MỞ'
-            : 'ĐÓNG');
+            ? 'ĐÃ MỞ CỬA'
+            : 'ĐÃ ĐÓNG CỬA';
         setTimeout(
           () =>
             (document.getElementById('status').textContent =
@@ -103,10 +102,13 @@
         );
       }
 
-      // Load mode hiện tại khi mở trang
       fetch(API)
         .then((r) => r.json())
-        .then((d) => send(d.cmd === 'M' ? 'M' : 'A'));
+        .then((d) => send(d.cmd === 'M' ? 'M' : 'A'))
+        .catch(
+          () =>
+            (document.getElementById('status').textContent = 'ESP đang offline')
+        );
     </script>
   </body>
 </html>
