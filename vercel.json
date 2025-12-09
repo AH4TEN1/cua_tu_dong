@@ -1,6 +1,11 @@
-
 {
+  "version": 2,
+  "functions": {
+    "functions/message.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "rewrites": [
-    { "source": "/api/message", "destination": "/api/message.js" }
+    { "source": "/api/message", "destination": "/functions/message.js" }
   ]
 }
