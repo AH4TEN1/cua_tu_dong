@@ -57,7 +57,7 @@
       <button id="auto" onclick="send('A')">Chế độ TỰ ĐỘNG</button>
       <button id="manual" onclick="send('M')">Chế độ THỦ CÔNG</button>
 
-      <div id="manual" style="margin-top: 20px; display: none">
+      <div id="manual-controls" style="margin-top: 20px; display: none">
         <button class="open" onclick="send('O')">MỞ CỬA</button>
         <button class="close" onclick="send('C')">ĐÓNG CỬA</button>
       </div>
@@ -66,45 +66,54 @@
     </div>
 
     <script>
-      const API = '/api/message'; // ← Dòng duy nhất cần thay đổi
+      const API = '/api/message';
 
       let mode = 'A';
+
       async function send(cmd) {
-        await fetch(API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cmd })
-        });
-        if (cmd === 'A' || cmd === 'M') {
-          mode = cmd;
-          document.getElementById('manual').style.display =
-            cmd === 'M' ? 'block' : 'none';
-          document
-            .getElementById('auto')
-            .classList.toggle('active', cmd === 'A');
-          document
-            .getElementById('manual')
-            .classList.toggle('active', cmd === 'M');
+        try {
+          const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmd })
+          });
+          if (!res.ok) throw new Error('API error');
+
+          if (cmd === 'A' || cmd === 'M') {
+            mode = cmd;
+            document.getElementById('manual-controls').style.display =
+              cmd === 'M' ? 'block' : 'none';
+            document
+              .getElementById('auto')
+              .classList.toggle('active', cmd === 'A');
+            document
+              .getElementById('manual')
+              .classList.toggle('active', cmd === 'M');
+          }
+
+          document.getElementById('status').textContent =
+            cmd === 'A'
+              ? 'Đã chuyển: TỰ ĐỘNG'
+              : cmd === 'M'
+              ? 'Đã chuyển: THỦ CÔNG'
+              : cmd === 'O'
+              ? 'ĐÃ MỞ CỬA'
+              : 'ĐÃ ĐÓNG CỬA';
+
+          setTimeout(() => {
+            document.getElementById('status').textContent =
+              mode === 'A' ? 'Mode: TỰ ĐỘNG' : 'Mode: THỦ CÔNG';
+          }, 2000);
+        } catch (e) {
+          document.getElementById('status').textContent =
+            'Lỗi kết nối: ' + e.message;
         }
-        document.getElementById('status').textContent =
-          cmd === 'A'
-            ? 'Đã chuyển: TỰ ĐỘNG'
-            : cmd === 'M'
-            ? 'Đã chuyển: THỦ CÔNG'
-            : cmd === 'O'
-            ? 'ĐÃ MỞ CỬA'
-            : 'ĐÃ ĐÓNG CỬA';
-        setTimeout(
-          () =>
-            (document.getElementById('status').textContent =
-              mode === 'A' ? 'Mode: TỰ ĐỘNG' : 'Mode: THỦ CÔNG'),
-          2000
-        );
       }
 
+      // Load mode hiện tại khi mở trang
       fetch(API)
         .then((r) => r.json())
-        .then((d) => send(d.cmd === 'M' ? 'M' : 'A'))
+        .then((data) => send(data.cmd === 'M' ? 'M' : 'A'))
         .catch(
           () =>
             (document.getElementById('status').textContent = 'ESP đang offline')

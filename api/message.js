@@ -1,3 +1,6 @@
+/** @format */
+'use strict';
+
 let latestCommand = 'Q';
 
 export default function handler(req, res) {
@@ -10,9 +13,9 @@ export default function handler(req, res) {
       const { cmd } = req.body || {};
       if (cmd && 'AMOC'.includes(cmd)) {
         latestCommand = cmd;
-        return res.status(200).json({ status: "OK", cmd });
+        return res.status(200).json({ status: 'OK', cmd });
       }
-      return res.status(400).json({ error: "Bad cmd" });
+      return res.status(400).json({ error: 'Invalid cmd' });
     }
 
     if (req.method === 'GET') {
@@ -21,7 +24,7 @@ export default function handler(req, res) {
       return res.status(200).json({ cmd });
     }
 
-    res.status(405).end);
+    res.status(405).end();
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
