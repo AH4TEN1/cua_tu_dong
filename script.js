@@ -1,37 +1,29 @@
-const API = 'https://cua-tu-dong.vercel.app/'; // đổi IP của ESP8266 tại đây
+// Edit BASE_API to your API project's domain, e.g. https://cua-api.vercel.app
+const BASE_API = 'https://<YOUR_API_PROJECT>.vercel.app';
 
-function sendCmd(cmd) {
-  fetch(`${API}/control?cmd=${cmd}`);
-}
-
-function setMode(m) {
-  fetch(`${API}/control?cmd=${m}`);
-  updateUI(m);
-}
-
-function updateUI(m) {
-  let a = document.getElementById('auto-btn');
-  let b = document.getElementById('manu-btn');
-  let c = document.getElementById('manual-controls');
-  let s = document.getElementById('status');
-
-  a.classList.remove('active');
-  b.classList.remove('active');
-
-  if (m === 'AUTO') {
-    a.classList.add('active');
-    c.style.display = 'none';
-    s.innerText = 'Mode: AUTO';
-  } else {
-    b.classList.add('active');
-    c.style.display = 'block';
-    s.innerText = 'Mode: MANUAL';
-  }
-}
-
-// Load mode khi mở web
-fetch(`${API}/getmode`)
-  .then((r) => r.text())
-  .then((mode) => {
-    updateUI(mode === 'A' ? 'AUTO' : 'MANUAL');
+async function postJson(path, body) {
+  const res = await fetch(BASE_API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
+  return res.json();
+}
+
+async function sendCmd(cmd) {
+  // push command to API queue
+  const r = await postJson('/api/control', { cmd });
+  console.log('sent', cmd, r);
+  showStatus('Sent: ' + cmd);
+}
+
+async function setMode(m) {
+  // we'll encode mode as 'AUTO' or 'MANUAL' as cmd A/M
+  const cmd = m === 'A' ? 'AUTO' : 'MANUAL';
+  await sendCmd(cmd);
+}
+
+function showStatus(t) {
+  const el = document.getElementById('status');
+  el.innerText = 'Status: ' + t;
+}

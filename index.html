@@ -1,29 +1,64 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SMART DOOR CONTROL</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SMART DOOR - UI</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/1.1.0/modern-normalize.min.css"
+    />
+    <style>
+      body {
+        font-family: Segoe UI, Arial;
+        background: #eaf0f8;
+        text-align: center;
+        padding: 32px;
+      }
+      .btn {
+        padding: 12px 20px;
+        margin: 6px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .open {
+        background: #28a745;
+        color: #fff;
+      }
+      .close {
+        background: #dc3545;
+        color: #fff;
+      }
+      .auto {
+        background: #007bff;
+        color: #fff;
+      }
+      .man {
+        background: #6c757d;
+        color: #fff;
+      }
+      #status {
+        margin-top: 20px;
+      }
+    </style>
   </head>
   <body>
-    <h2>SMART DOOR CONTROL</h2>
+    <h1>SMART DOOR (Web UI)</h1>
 
     <div>
-      <button id="auto-btn" class="mode-btn" onclick="setMode('AUTO')">
-        AUTO
-      </button>
-      <button id="manu-btn" class="mode-btn" onclick="setMode('MANUAL')">
-        MANUAL
-      </button>
+      <button class="btn auto" onclick="setMode('A')">AUTO</button>
+      <button class="btn man" onclick="setMode('M')">MANUAL</button>
     </div>
 
-    <div id="manual-controls" style="display: none; margin-top: 20px">
-      <button class="open" onclick="sendCmd('OPEN')">OPEN</button>
-      <button class="close" onclick="sendCmd('CLOSE')">CLOSE</button>
+    <div style="margin-top: 16px">
+      <button class="btn open" onclick="sendCmd('OPEN')">OPEN</button>
+      <button class="btn close" onclick="sendCmd('CLOSE')">CLOSE</button>
     </div>
 
-    <p id="status">Loading mode...</p>
+    <p id="status">Status: —</p>
 
-    <script src="script.js"></script>
+    <script src="/script.js"></script>
   </body>
 </html>
