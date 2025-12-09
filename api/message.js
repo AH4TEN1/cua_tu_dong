@@ -1,47 +1,26 @@
-// /api/message.js
-import Cors from 'cors';
+// api/message.js
+let latestCommand = 'Q'; // mặc định hỏi mode
 
-const cors = Cors({
-  methods: ['GET', 'POST']
-});
-
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) reject(result);
-      resolve(result);
-    });
-  });
-}
-
-export default async function handler(req, res) {
-  await runMiddleware(req, res, cors);
-
-  // Chỉ cho POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { cmd } = req.body || {};
-
-  if (!cmd) {
-    return res.status(400).json({ error: 'Missing cmd' });
-  }
-
-  // HÀM KẾT NỐI ESP8266
-  const ESP_URL = 'https://cua-tu-dong.vercel.app/message';
-  // VD: 192.168.1.55/message
-
-  try {
-    const espResponse = await fetch(ESP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cmd })
-    });
-
-    const data = await espResponse.json();
-    res.status(200).json({ ok: true, esp: data });
-  } catch (e) {
-    res.status(500).json({ error: 'ESP8266 unreachable', detail: e.message });
+export default function handler(req, res) {
+  if (req.method === 'POST') {
+    const { cmd } = req.body;
+    if ('AMOC'.includes(cmd)) {
+      latestCommand = cmd;
+      res.status(200).json({ status: 'OK', cmd });
+    } else {
+      res.status(400).json({ error: 'Invalid cmd' });
+    }
+  } else if (req.method === 'GET') {
+    // ESP sẽ gọi liên tục để lấy lệnh mới
+    res.status(200).json({ cmd: latestCommand });
+    // Sau khi ESP lấy rồi thì reset về Q (tránh lặp lệnh)
+    if (latestCommand !== 'Q') latestCommand = 'Q';
+  } else {
+    res.status(405).end();
   }
 }
+
+// Vercel Edge Config – không cần database gì cả
+export const config = {
+  runtime: 'edge'
+};

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smart Door – Điều khiển từ xa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: system-ui;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+      }
+      .card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 30px 40px;
+        width: 90%;
+        max-width: 420px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      }
+      button {
+        width: 100%;
+        padding: 18px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .active {
+        transform: scale(1.05);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      }
+      .open {
+        background: #28a745;
+      }
+      .close {
+        background: #dc3545;
+      }
+      #status {
+        margin-top: 20px;
+        font-size: 19px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Smart Door Control</h1>
+      <button id="auto" onclick="send('A')">Chế độ TỰ ĐỘNG</button>
+      <button id="manual" onclick="send('M')">Chế độ THỦ CÔNG</button>
+
+      <div id="manual" style="margin-top: 20px; display: none">
+        <button class="open" onclick="send('O')">MỞ CỬA</button>
+        <button class="close" onclick="send('C')">ĐÓNG CỬA</button>
+      </div>
+
+      <div id="status">Đang kết nối...</div>
+    </div>
+
+    <script>
+      const API = '/api/message';
+      let mode = 'A';
+
+      async function send(cmd) {
+        await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cmd })
+        });
+        if (cmd === 'A' || cmd === 'M') {
+          mode = cmd;
+          document.getElementById('manual').style.display =
+            cmd === 'M' ? 'block' : 'none';
+          document
+            .getElementById('auto')
+            .classList.toggle('active', cmd === 'A');
+          document
+            .getElementById('manual')
+            .classList.toggle('active', cmd === 'M');
+        }
+        document.getElementById('status').textContent =
+          'Đã gửi lệnh: ' +
+          (cmd === 'A'
+            ? 'TỰ ĐỘNG'
+            : cmd === 'M'
+            ? 'THỦ CÔNG'
+            : cmd === 'O'
+            ? 'MỞ'
+            : 'ĐÓNG');
+        setTimeout(
+          () =>
+            (document.getElementById('status').textContent =
+              mode === 'A' ? 'Mode: TỰ ĐỘNG' : 'Mode: THỦ CÔNG'),
+          2000
+        );
+      }
+
+      // Load mode hiện tại khi mở trang
+      fetch(API)
+        .then((r) => r.json())
+        .then((d) => send(d.cmd === 'M' ? 'M' : 'A'));
+    </script>
+  </body>
+</html>
