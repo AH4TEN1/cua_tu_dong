@@ -1,57 +1,30 @@
 /** @format */
 'use strict';
 
-import { MongoClient } from 'mongodb';
-
-// ===== STATE =====
+// Lưu trạng thái toàn cục (Vercel serverless vẫn giữ được giữa các request)
 let latestCommand = 'Q'; // A, M, O, C
-let holdTimeSeconds = 5;
+let holdTimeSeconds = 5; // Mặc định 5 giây (có thể thay đổi bằng slider)
 
-// ===== MONGODB =====
-const uri = process.env.MONGODB_URI; // URI KHÔNG CẦN DB NAME
-let cachedClient = null;
-
-async function getDB() {
-  if (cachedClient) return cachedClient.db('smartdoor'); // 👈 DB đặt ở đây
-  const client = new MongoClient(uri);
-  await client.connect();
-  cachedClient = client;
-  return client.db('smartdoor');
-}
-
-async function logDB(data) {
-  try {
-    const db = await getDB();
-    await db.collection('door_logs').insertOne({
-      ...data,
-      createdAt: new Date()
-    });
-  } catch (e) {
-    console.error('Mongo error:', e.message);
-  }
-}
-
-// ===== API =====
-export default async function handler(req, res) {
+export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   try {
-    // ========= POST =========
+    // ==================== POST: Nhận lệnh từ web ====================
     if (req.method === 'POST') {
       const { cmd, time } = req.body || {};
 
+      // Xử lý lệnh điều khiển
       if (cmd && 'AMOC'.includes(cmd)) {
         latestCommand = cmd;
-        await logDB({ source: 'WEB', cmd });
       }
 
+      // Xử lý thay đổi thời gian giữ cửa (từ slider)
       if (time !== undefined) {
         const t = parseInt(time);
         if (Number.isInteger(t) && t >= 1 && t <= 30) {
           holdTimeSeconds = t;
-          await logDB({ source: 'WEB', action: 'SET_TIME', time: t });
         }
       }
 
@@ -62,17 +35,15 @@ export default async function handler(req, res) {
       });
     }
 
-    // ========= GET =========
+    // ==================== GET: ESP polling ====================
     if (req.method === 'GET') {
       const cmdToSend = latestCommand;
-
-      await logDB({
-        source: 'ESP32',
-        cmd: cmdToSend,
-        time: holdTimeSeconds
-      });
-
-      if (!['Q', 'A', 'M'].includes(latestCommand)) {
+      // Reset lệnh dùng một lần (O, C) để không bị lặp lại
+      if (
+        latestCommand !== 'Q' &&
+        latestCommand !== 'A' &&
+        latestCommand !== 'M'
+      ) {
         latestCommand = 'Q';
       }
 
@@ -82,6 +53,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // Phương thức không cho phép
     res.status(405).end();
   } catch (e) {
     console.error(e);
@@ -89,6 +61,7 @@ export default async function handler(req, res) {
   }
 }
 
+// Bắt buộc để Vercel parse JSON body
 export const config = {
   api: {
     bodyParser: true
