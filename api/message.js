@@ -1,23 +1,13 @@
-/** @format */
 'use strict';
 
 import { MongoClient } from 'mongodb';
 
-// ===== MongoDB (module scope – reuse connection) =====
 const uri = process.env.MONGODB_URI;
-if (!uri) throw new Error('Missing MONGODB_URI');
+const client = new MongoClient(uri);
 
-let mongoClient;
-let mongoClientPromise;
-
-if (!mongoClientPromise) {
-  mongoClient = new MongoClient(uri);
-  mongoClientPromise = mongoClient.connect();
-}
-
-// ===== State tạm (serverless best-effort) =====
-let latestCommand = 'Q'; // A, M, O, C
+let latestCommand = 'Q'; // A M O C
 let holdTimeSeconds = 5;
+let doorState = 'CLOSE'; // OPEN | CLOSE
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,67 +15,73 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   try {
-    const client = await mongoClientPromise;
+    await client.connect();
     const db = client.db('smart_door');
     const logs = db.collection('logs');
 
-    // ==================== POST: Web gửi lệnh ====================
+    // ===== POST =====
     if (req.method === 'POST') {
-      const { cmd, time } = req.body || {};
+      const { cmd, time, event } = req.body || {};
+
+      // ESP báo trạng thái thực
+      if (event === 'DOOR_OPENED') doorState = 'OPEN';
+      if (event === 'DOOR_CLOSED') doorState = 'CLOSE';
 
       if (cmd && 'AMOC'.includes(cmd)) {
         latestCommand = cmd;
+        if (cmd === 'O') doorState = 'OPEN';
+        if (cmd === 'C') doorState = 'CLOSE';
       }
 
       if (time !== undefined) {
         const t = parseInt(time);
-        if (Number.isInteger(t) && t >= 1 && t <= 30) {
-          holdTimeSeconds = t;
-        }
+        if (t >= 1 && t <= 30) holdTimeSeconds = t;
       }
 
-      // Log WEB
       await logs.insertOne({
-        source: 'WEB',
+        source: 'WEB/ESP',
+        action: cmd || event || 'POST',
         cmd: cmd ?? null,
-        time: holdTimeSeconds,
+        doorState,
+        holdTime: holdTimeSeconds,
         createdAt: new Date()
       });
 
-      return res.status(200).json({
-        status: 'OK',
-        cmd: latestCommand,
-        time: holdTimeSeconds
-      });
+      return res.json({ status: 'OK' });
     }
 
-    // ==================== GET: ESP polling ====================
+    // ===== GET =====
     if (req.method === 'GET') {
       const cmdToSend = latestCommand;
 
-      // Reset lệnh 1 lần
+      let action = 'POLL';
+      if (cmdToSend === 'O') action = 'OPEN_CMD';
+      if (cmdToSend === 'C') action = 'CLOSE_CMD';
+      if (cmdToSend === 'A') action = 'AUTO';
+      if (cmdToSend === 'M') action = 'MANUAL';
+
+      await logs.insertOne({
+        source: 'ESP32',
+        action,
+        cmd: cmdToSend,
+        doorState,
+        holdTime: holdTimeSeconds,
+        createdAt: new Date()
+      });
+
       if (!['Q', 'A', 'M'].includes(latestCommand)) {
         latestCommand = 'Q';
       }
 
-      // Log ESP
-      await logs.insertOne({
-        source: 'ESP32',
-        cmd: cmdToSend,
-        time: holdTimeSeconds,
-        createdAt: new Date()
-      });
-
-      return res.status(200).json({
+      return res.json({
         cmd: cmdToSend,
         time: holdTimeSeconds
       });
     }
 
-    return res.status(405).end();
+    res.status(405).end();
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message });
   }
 }
 
