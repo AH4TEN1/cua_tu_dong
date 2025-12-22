@@ -1,8 +1,8 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/message",
-      "destination": "/api/message.js"
-    }
-  ]
+  "name": "smart-door-server",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "mongodb": "^6.5.0"
+  }
 }
