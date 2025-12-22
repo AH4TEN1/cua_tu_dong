@@ -14,61 +14,38 @@ export default async function handler(req, res) {
     const db = client.db('smart_door');
     const logs = db.collection('logs');
 
-    // ===== POST =====
     if (req.method === 'POST') {
       const { cmd, time } = req.body || {};
 
-      if (cmd && 'AMOC'.includes(cmd)) {
-        latestCommand = cmd;
-      }
-
-      if (time !== undefined) {
-        const t = parseInt(time);
-        if (t >= 1 && t <= 30) holdTimeSeconds = t;
-      }
+      if (cmd && 'AMOC'.includes(cmd)) latestCommand = cmd;
+      if (time >= 1 && time <= 30) holdTimeSeconds = time;
 
       await logs.insertOne({
         source: 'WEB',
-        cmd: cmd || null,
+        cmd,
         time: holdTimeSeconds,
         createdAt: new Date()
       });
 
-      return res.status(200).json({
-        status: 'OK',
-        cmd: latestCommand,
-        time: holdTimeSeconds
-      });
+      return res.json({ cmd: latestCommand, time: holdTimeSeconds });
     }
 
-    // ===== GET =====
     if (req.method === 'GET') {
-      const cmdToSend = latestCommand;
-
-      if (!['Q', 'A', 'M'].includes(latestCommand)) {
-        latestCommand = 'Q';
-      }
+      const sendCmd = latestCommand;
+      if (!['A', 'M', 'Q'].includes(latestCommand)) latestCommand = 'Q';
 
       await logs.insertOne({
         source: 'ESP32',
-        cmd: cmdToSend,
+        cmd: sendCmd,
         time: holdTimeSeconds,
         createdAt: new Date()
       });
 
-      return res.status(200).json({
-        cmd: cmdToSend,
-        time: holdTimeSeconds
-      });
+      return res.json({ cmd: sendCmd, time: holdTimeSeconds });
     }
 
     res.status(405).end();
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: e.message });
   }
 }
-
-export const config = {
-  api: { bodyParser: true }
-};
